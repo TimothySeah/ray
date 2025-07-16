@@ -90,17 +90,30 @@ class _CheckpointManager:
         """
         self._latest_checkpoint_result = checkpoint_result
 
-        if self._checkpoint_config.checkpoint_score_attribute is not None:
+        if (
+            self._checkpoint_config.checkpoint_score_attribute is not None
+            and self._checkpoint_config.checkpoint_score_attribute
+            in checkpoint_result.metrics
+        ):
             # If we're ordering by a score, insert the checkpoint
             # so that the list remains sorted.
             _insert_into_sorted_list(
                 self._checkpoint_results,
-                checkpoint_result,
+                _TrainingResult(
+                    checkpoint=checkpoint_result.checkpoint,
+                    metrics={
+                        self._checkpoint_config.checkpoint_score_attribute: checkpoint_result.metrics[
+                            self._checkpoint_config.checkpoint_score_attribute
+                        ]
+                    },
+                ),
                 key=self._get_checkpoint_score,
             )
         else:
-            # If no metric is provided, just append (ordering by time of registration).
-            self._checkpoint_results.append(checkpoint_result)
+            # If no metric is provided, just append the checkpoint (ordering by time of registration).
+            self._checkpoint_results.append(
+                _TrainingResult(checkpoint=checkpoint_result.checkpoint, metrics={})
+            )
 
         if self._checkpoint_config.num_to_keep is not None:
             # Delete the bottom (N - K) checkpoints
